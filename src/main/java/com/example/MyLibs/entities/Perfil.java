@@ -1,14 +1,45 @@
 package com.example.MyLibs.entities;
 
-public class Perfil {
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
-    //! falta lo de aquí
+@Data
+@Entity
+@NoArgsConstructor
+@Table(name = "perfiles")
+public class Perfil {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     private String nombre;
+
+    @NotBlank
     private String apellidos;
     private String bio;
+
+    @NotNull
     private Long tlf;
 
-    //! @OneToOne con Usuario (mappedBy perfil)
+    public Perfil(Long id, String nombre, String apellidos, String bio, Long tlf) {
+        this.id = id;
+        this.nombre = nombre;
+        this.apellidos = apellidos;
+        this.bio = bio;
+        this.tlf = tlf;
+    }
+
+    //! Relación 1:1 con Usuario
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @JoinColumn(name = "usuario_id", referencedColumnName = "id")
+    @OneToOne(cascade = CascadeType.ALL)
+    private Usuario usuario;
 }

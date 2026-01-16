@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -41,18 +42,22 @@ public class Usuario {
     }
 
     //! Relación 1:1 con Perfil
-    @JoinColumn(name = "perfil_id", referencedColumnName = "id")
-    @OneToOne(cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL)
     private Perfil perfil;
 
-    //! Relación N:M con Rol (ADMIN o USER)
+    //! Relación N:M con Rol
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @JoinTable(name = "usuarios_roles", joinColumns = @JoinColumn(name = "usuario_id"), inverseJoinColumns = @JoinColumn(name = "rol_id"))
     @ManyToMany(fetch = FetchType.LAZY)
     private Set<Rol> roles = new HashSet<>();
 
     //! Relación 1:N con Libro
     @ToString.Exclude
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy  = "usuario", cascade = CascadeType.ALL)
     private List<Libro> libros = new ArrayList<>();
 
 }

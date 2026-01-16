@@ -1,21 +1,40 @@
 package com.example.MyLibs.entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Entity
 @NoArgsConstructor
-@Table(name = "rol")
+@Table(name = "roles")
 public class Rol {
-
-    //! falta lo de aquí
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private Roles nombre;
 
+    private String descripcion;
 
+    public Rol(Roles nombre, Long id, String descripcion) {
+        this.nombre = nombre;
+        this.id = id;
+        this.descripcion = descripcion;
+    }
 
+    //! Relación N:M con Usuario
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(mappedBy = "roles")
+    private Set<Usuario> usuarios = new HashSet<>();
 }
