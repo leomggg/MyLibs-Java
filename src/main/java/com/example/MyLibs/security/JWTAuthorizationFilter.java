@@ -37,4 +37,16 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        return path.startsWith("/VAADIN/") ||
+                path.startsWith("/frontend/") ||
+                path.startsWith("/line-awesome/") ||
+                path.startsWith("/webjars/") ||
+                path.startsWith("/sw.js") ||
+                path.startsWith("/login") ||
+                path.startsWith("/HILLA/");
+    }
 }
