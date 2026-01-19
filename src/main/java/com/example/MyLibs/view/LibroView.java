@@ -12,11 +12,13 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
-@Route("")
-@RolesAllowed({"ROL_USER", "ROL_ADMIN"})
+@Route("") // Ahora es la página principal
+@PageTitle("Libros | MyLibs")
+@RolesAllowed({"ROL_USER", "ROL_ADMIN"}) // Corregido: Coincide con tu Enum
 public class LibroView extends VerticalLayout {
 
     private final LibroService libroService;
@@ -36,6 +38,8 @@ public class LibroView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
 
         H1 tituloPagina = new H1("Gestión de Libros");
+
+        // Botón de Logout funcional para Spring Security
         Button btnLogout = new Button("Cerrar Sesión", e -> {
             getUI().ifPresent(ui -> ui.getPage().setLocation("/logout"));
         });
@@ -57,6 +61,7 @@ public class LibroView extends VerticalLayout {
         grid.setHeight("400px");
 
         add(encabezado, formulario, grid);
+
         actualizarLista();
     }
 
@@ -68,8 +73,6 @@ public class LibroView extends VerticalLayout {
                 Notification.show("Libro guardado con éxito");
                 actualizarLista();
                 binder.setBean(new Libro());
-            } else {
-                Notification.show("Por favor, revisa los errores en el formulario");
             }
         } catch (Exception ex) {
             Notification.show("Error al guardar: " + ex.getMessage());

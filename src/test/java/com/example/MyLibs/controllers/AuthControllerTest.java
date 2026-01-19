@@ -26,13 +26,14 @@ class AuthControllerTest {
     void testLoginSuccess() throws Exception {
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setUsername("admin");
-        loginRequest.setPassword("admin123");
+        loginRequest.setPassword("1234");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.username").value("admin"));
     }
 
     @Test

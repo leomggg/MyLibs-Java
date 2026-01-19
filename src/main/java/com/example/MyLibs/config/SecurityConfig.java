@@ -40,15 +40,14 @@ public class SecurityConfig extends VaadinWebSecurity {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 
-        // 1. Permitir acceso a la API REST y Consola H2
-        // IMPORTANTE: NO pongas .anyRequest() aquí, deja que Vaadin lo gestione al final.
+        // Endpoints de API y H2 permitidos
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/data/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
         );
 
-        // 2. Desactivar CSRF solo para API y H2
+        // Deshabilitar CSRF para API
         http.csrf(csrf -> csrf
                 .ignoringRequestMatchers(
                         new AntPathRequestMatcher("/api/**"),
@@ -56,16 +55,14 @@ public class SecurityConfig extends VaadinWebSecurity {
                 )
         );
 
-        // 3. Configuración para frames (Consola H2)
         http.headers(headers -> headers.frameOptions(f -> f.disable()));
 
-        // 4. Añadir el filtro JWT antes del de usuario/password
+        // Filtro JWT para peticiones REST
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // 5. Configuración base de Vaadin (Añade sus rutas y el anyRequest().authenticated() final)
         super.configure(http);
 
-        // 6. Registrar la vista de login para la redirección automática
+        // Establecer la vista de login para redirecciones automáticas
         setLoginView(http, LoginView.class);
     }
 }
