@@ -1,10 +1,7 @@
 package com.example.MyLibs.entities;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -21,9 +18,11 @@ public class Libro {
     private Long id;
 
     @NotBlank(message = "El título es obligatorio")
+    @Size(min = 2, max = 100, message = "El título debe tener entre 2 y 100 caracteres")
     private String titulo;
 
     @NotBlank(message = "El autor es obligatorio")
+    @Size(min = 2, max = 50, message = "El nombre del autor debe tener entre 2 y 50 caracteres")
     private String autor;
 
     @Pattern(regexp = "^(978|979)\\d{10}$", message = "El ISBN debe ser un formato válido de 13 dígitos (empezando por 978 o 979)")
@@ -46,6 +45,12 @@ public class Libro {
     @EqualsAndHashCode.Exclude
     @JoinColumn(name = "categoria_id")
     @ManyToOne(fetch = FetchType.LAZY)
-    private Categoria categoría;
+    private Categoria categoria;
 
+    //! Relación 1:N con Usuario
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
 }

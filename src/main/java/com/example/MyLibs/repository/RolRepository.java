@@ -3,11 +3,11 @@ package com.example.MyLibs.repository;
 import com.example.MyLibs.entities.Rol;
 import com.example.MyLibs.entities.Roles;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
 import java.util.Optional;
 
-@Repository
+@RepositoryRestResource(path = "roles")
 public interface RolRepository extends JpaRepository<Rol, Long> {
-    Optional<Rol> findByRol(Roles rol);
+    Optional<Rol> findByNombre(Roles rol);
 }
