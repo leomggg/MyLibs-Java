@@ -15,10 +15,11 @@ import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
+import java.math.BigDecimal;
 
-@Route("") // Ahora es la página principal
+@Route("")
 @PageTitle("Libros | MyLibs")
-@RolesAllowed({"ROL_USER", "ROL_ADMIN"}) // Corregido: Coincide con tu Enum
+@RolesAllowed({"ROL_USER", "ROL_ADMIN"})
 public class LibroView extends VerticalLayout {
 
     private final LibroService libroService;
@@ -38,8 +39,6 @@ public class LibroView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
 
         H1 tituloPagina = new H1("Gestión de Libros");
-
-        // Botón de Logout funcional para Spring Security
         Button btnLogout = new Button("Cerrar Sesión", e -> {
             getUI().ifPresent(ui -> ui.getPage().setLocation("/logout"));
         });
@@ -52,7 +51,9 @@ public class LibroView extends VerticalLayout {
         encabezado.setJustifyContentMode(JustifyContentMode.BETWEEN);
 
         FormLayout formulario = new FormLayout(titulo, autor, isbn, precio, btnGuardar);
+
         binder.bindInstanceFields(this);
+        binder.setBean(new Libro(null, "", "", "", BigDecimal.ZERO));
 
         btnGuardar.addClickListener(e -> guardarLibro());
         btnGuardar.getThemeNames().add("primary");
@@ -61,18 +62,17 @@ public class LibroView extends VerticalLayout {
         grid.setHeight("400px");
 
         add(encabezado, formulario, grid);
-
         actualizarLista();
     }
 
     private void guardarLibro() {
-        Libro nuevo = new Libro();
         try {
-            if (binder.writeBeanIfValid(nuevo)) {
+            Libro nuevo = binder.getBean();
+            if (binder.validate().isOk()) {
                 libroService.guardarLibro(nuevo);
                 Notification.show("Libro guardado con éxito");
                 actualizarLista();
-                binder.setBean(new Libro());
+                binder.setBean(new Libro(null, "", "", "", BigDecimal.ZERO));
             }
         } catch (Exception ex) {
             Notification.show("Error al guardar: " + ex.getMessage());

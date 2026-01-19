@@ -21,9 +21,6 @@ public class UsuarioService {
     @Autowired
     private RolRepository rolRepo;
 
-    //! Nota: Necesitarás BCryptPasswordEncoder cuando configures Security
-    //! private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder()
-
     public Usuario registrarUser(Usuario usuario) {
         if(usuarioRepo.existsByUsername(usuario.getUsername())) {
             throw new RuntimeException("El nombre de usuario ya está en uso");
@@ -31,8 +28,6 @@ public class UsuarioService {
 
         Rol rolUser = rolRepo.findByNombre(Roles.ROL_USER).orElseThrow(() -> new RuntimeException("Error: Rol no encontrado"));
         usuario.getRoles().add(rolUser);
-
-        // usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
 
         return usuarioRepo.save(usuario);
     }

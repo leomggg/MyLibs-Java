@@ -54,8 +54,6 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
 
-        // El filtro JWT SOLO debe ejecutarse para las rutas que empiezan por /api/
-        // Para cualquier otra ruta (Vaadin, H2, estáticos), devolvemos true (saltarse el filtro)
         return !path.startsWith("/api/");
     }
 }
