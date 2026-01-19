@@ -1,11 +1,10 @@
 package com.example.MyLibs.controllers;
 
-import com.example.MyLibs.config.JWTUtil;
 import com.example.MyLibs.dto.LoginRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,28 +14,24 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager authManager;
+    private final AuthenticationManager authenticationManager;
 
-    @Autowired
-    private JWTUtil jwtUtil;
+    public AuthController(AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
+    }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 
-        Authentication auth = authManager.authenticate(
+        Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
+                        request.getUsername(),
+                        request.getPassword()
                 )
         );
 
-        String token = jwtUtil.generateToken(auth.getName(), auth.getAuthorities());
-
-        return ResponseEntity.ok(Map.of(
-                "token", "Bearer " + token,
-                "username", auth.getName(),
-                "roles", auth.getAuthorities()
-        ));
+        return ResponseEntity.ok(
+                Map.of("username", auth.getName())
+        );
     }
 }

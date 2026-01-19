@@ -13,15 +13,14 @@ import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 
-@Route("libros")
-@PermitAll
+@Route("")
+@RolesAllowed({"ROL_USER", "ROL_ADMIN"})
 public class LibroView extends VerticalLayout {
 
     private final LibroService libroService;
     private Grid<Libro> grid = new Grid<>(Libro.class);
-
     private BeanValidationBinder<Libro> binder = new BeanValidationBinder<>(Libro.class);
 
     private TextField titulo = new TextField("Título");
@@ -55,11 +54,9 @@ public class LibroView extends VerticalLayout {
         btnGuardar.getThemeNames().add("primary");
 
         grid.setColumns("titulo", "autor", "isbn", "precio");
-        grid.getColumnByKey("titulo").setHeader("Título");
         grid.setHeight("400px");
 
         add(encabezado, formulario, grid);
-
         actualizarLista();
     }
 
