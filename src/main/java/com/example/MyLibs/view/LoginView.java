@@ -9,7 +9,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
-@Route("login") // Cambiado de "" a "login" para evitar conflictos
+@Route("login")
 @PageTitle("Acceso | MyLibs")
 @AnonymousAllowed
 public class LoginView extends VerticalLayout implements BeforeEnterObserver {
@@ -21,14 +21,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
 
-        login.setAction("login"); // Indica a Spring Security que procese el formulario
+        login.setAction("login");
 
         add(new H1("Biblioteca MyLibs"), login);
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        // Si hay un error de autenticación en la URL, lo mostramos en el formulario
         if (beforeEnterEvent.getLocation()
                 .getQueryParameters()
                 .getParameters()

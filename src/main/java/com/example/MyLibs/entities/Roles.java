@@ -1,5 +1,5 @@
 package com.example.MyLibs.entities;
 
 public enum Roles {
-    ROL_ADMIN, ROL_USER;
+    ROLE_ADMIN, ROLE_USER; // Cambiado de ROL_ a ROLE_
 }

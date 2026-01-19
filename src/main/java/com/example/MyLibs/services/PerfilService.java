@@ -13,13 +13,11 @@ public class PerfilService {
     @Autowired
     private PerfilRepository perfilRepo;
 
-    // Obtener perfil por ID
     public Perfil obtenerPorId(Long id) {
         return perfilRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Perfil no encontrado con ID: " + id));
     }
 
-    // Actualizar datos del perfil
     @Transactional
     public Perfil actualizarPerfil(Long id, Perfil perfilDetalles) {
         Perfil perfil = obtenerPorId(id);

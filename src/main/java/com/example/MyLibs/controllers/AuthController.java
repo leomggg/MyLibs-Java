@@ -34,7 +34,6 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(auth.getName(), auth.getAuthorities());
 
-        // 3. Devolver el token en el JSON (necesario para que el test pase)
         return ResponseEntity.ok(
                 Map.of(
                         "username", auth.getName(),

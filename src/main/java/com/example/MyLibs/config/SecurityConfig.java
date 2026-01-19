@@ -17,7 +17,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity(jsr250Enabled = true) // VITAL para que @RolesAllowed funcione
 public class SecurityConfig extends VaadinWebSecurity {
 
     private final JWTAuthorizationFilter jwtFilter;
@@ -40,14 +40,12 @@ public class SecurityConfig extends VaadinWebSecurity {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 
-        // Endpoints de API y H2 permitidos
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/data/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
         );
 
-        // Deshabilitar CSRF para API
         http.csrf(csrf -> csrf
                 .ignoringRequestMatchers(
                         new AntPathRequestMatcher("/api/**"),
@@ -57,12 +55,10 @@ public class SecurityConfig extends VaadinWebSecurity {
 
         http.headers(headers -> headers.frameOptions(f -> f.disable()));
 
-        // Filtro JWT para peticiones REST
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         super.configure(http);
 
-        // Establecer la vista de login para redirecciones automáticas
-        setLoginView(http, LoginView.class);
+        setLoginView(http, LoginView.class); // Indica a Vaadin que use nuestra vista de login
     }
 }

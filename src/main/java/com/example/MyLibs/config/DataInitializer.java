@@ -29,12 +29,13 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        // Creamos los roles con el nuevo estándar
         Rol adminRol = new Rol();
-        adminRol.setNombre(Roles.ROL_ADMIN);
+        adminRol.setNombre(Roles.ROLE_ADMIN);
         rolRepo.save(adminRol);
 
         Rol userRol = new Rol();
-        userRol.setNombre(Roles.ROL_USER);
+        userRol.setNombre(Roles.ROLE_USER);
         rolRepo.save(userRol);
 
         Perfil adminPerfil = new Perfil();
@@ -67,6 +68,6 @@ public class DataInitializer implements CommandLineRunner {
         l1.setUsuario(admin);
         libroRepo.save(l1);
 
-        System.out.println(">>> Base de datos inicializada: Usuario 'admin' creado correctamente.");
+        System.out.println(">>> Base de datos inicializada con ROLE_ADMIN.");
     }
 }
