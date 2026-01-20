@@ -1,5 +1,6 @@
 package com.example.MyLibs.view;
 
+import com.example.MyLibs.config.SecurityConfig; // Importar tu config de seguridad
 import com.example.MyLibs.entities.*;
 import com.example.MyLibs.services.*;
 import com.vaadin.flow.component.Component;
@@ -18,26 +19,21 @@ import com.vaadin.flow.component.textfield.*;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.spring.security.AuthenticationContext; // Para el logout correcto
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.context.SecurityContextHolder;
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.stream.Collectors;
 
 @Route("")
-@PageTitle("Comunidad MyLibs")
+@PageTitle("Comunidad | MyLibs")
 @RolesAllowed({"ROLE_USER", "ROLE_ADMIN"})
 public class LibroView extends VerticalLayout {
 
     private final LibroService libroService;
     private final CategoriaService categoriaService;
     private final UsuarioService usuarioService;
-
-    private TextField titulo = new TextField("Título");
-    private TextField autor = new TextField("Autor");
-    private ComboBox<Categoria> categoria = new ComboBox<>("Género");
-    private TextArea sinopsis = new TextArea("Sinopsis");
-    private Checkbox leido = new Checkbox("¿Ya lo has leído?");
+    private final ComentarioService comentarioService;
+    private final transient AuthenticationContext authContext;
 
     private FlexLayout catalogLayout = new FlexLayout();
     private Tab allTab = new Tab("Muro Global 🌏");
@@ -45,163 +41,145 @@ public class LibroView extends VerticalLayout {
     private Tab pendingTab = new Tab("Mis Pendientes ⏳");
     private Tabs filters = new Tabs(allTab, readTab, pendingTab);
 
-    public LibroView(LibroService libroService, CategoriaService categoriaService, UsuarioService usuarioService) {
-        this.libroService = libroService;
-        this.categoriaService = categoriaService;
-        this.usuarioService = usuarioService;
+    public LibroView(LibroService ls, CategoriaService cs, UsuarioService us, ComentarioService cms, AuthenticationContext authContext) {
+        this.libroService = ls; this.categoriaService = cs;
+        this.usuarioService = us; this.comentarioService = cms;
+        this.authContext = authContext;
 
         setSizeFull();
-        getStyle().set("background-color", "#f8fafc");
+        getStyle().set("background-color", "#f1f5f9");
 
-        H2 header = new H2("📖 MyLibs Social");
-        Button btnLogout = new Button("Salir", VaadinIcon.SIGN_OUT.create(), e -> {
-            getUI().ifPresent(ui -> ui.getPage().setLocation("/logout"));
-        });
-        btnLogout.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        Span userLabel = new Span("Conectado como: " + currentUsername);
+        userLabel.getStyle().set("font-weight", "bold").set("color", "#475569");
 
-        Button btnFloatingAdd = new Button(VaadinIcon.PLUS.create(), e -> abrirDialogoNuevoLibro());
-        btnFloatingAdd.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
-        btnFloatingAdd.getStyle()
-                .set("position", "fixed").set("bottom", "30px").set("right", "30px")
-                .set("border-radius", "50%").set("width", "70px").set("height", "70px")
-                .set("z-index", "100").set("box-shadow", "0 10px 20px rgba(0,0,0,0.3)");
+        Button btnLogout = new Button("Cerrar Sesión", VaadinIcon.EXIT.create(), e -> authContext.logout());
+        btnLogout.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
-        HorizontalLayout topBar = new HorizontalLayout(header, filters, btnLogout);
-        topBar.setWidthFull();
-        topBar.setAlignItems(Alignment.CENTER);
-        topBar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        HorizontalLayout userInfo = new HorizontalLayout(userLabel, btnLogout);
+        userInfo.setAlignItems(Alignment.CENTER);
+
+        HorizontalLayout topBar = new HorizontalLayout(new H2("MyLibs Social"), filters, userInfo);
+        topBar.setWidthFull(); topBar.setAlignItems(Alignment.CENTER); topBar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        topBar.getStyle().set("background", "white").set("padding", "10px 20px");
+
+        Button btnAdd = new Button(VaadinIcon.PLUS.create(), e -> abrirDialogoNuevoLibro());
+        btnAdd.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+        btnAdd.getStyle().set("position", "fixed").set("bottom", "30px").set("right", "30px").set("border-radius", "50%").set("width", "70px").set("height", "70px").set("z-index", "100");
 
         filters.addSelectedChangeListener(e -> actualizarCatalogo());
-
         catalogLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        catalogLayout.getStyle().set("gap", "25px").set("padding", "20px");
+        catalogLayout.getStyle().set("gap", "20px").set("padding", "20px");
 
-        add(topBar, new Hr(), catalogLayout, btnFloatingAdd);
+        add(topBar, new Hr(), catalogLayout, btnAdd);
         actualizarCatalogo();
     }
 
     private void abrirDialogoNuevoLibro() {
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Añadir a la biblioteca");
+        Dialog d = new Dialog();
+        d.setHeaderTitle("Añadir Libro al Muro");
 
-        categoria.setItems(categoriaService.listarTodas());
-        categoria.setItemLabelGenerator(Categoria::getNombre);
-        sinopsis.setPlaceholder("Escribe un breve resumen...");
+        TextField t = new TextField("Título");
+        TextField a = new TextField("Autor");
+        ComboBox<Categoria> c = new ComboBox<>("Género");
+        c.setItems(categoriaService.listarTodas());
+        c.setItemLabelGenerator(Categoria::getNombre);
 
-        FormLayout form = new FormLayout(titulo, autor, categoria, sinopsis, leido);
-        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        TextArea s = new TextArea("Sinopsis");
+        Checkbox l = new Checkbox("¿Lo has leído ya?");
 
-        Libro nuevoLibro = new Libro();
-        BeanValidationBinder<Libro> binder = new BeanValidationBinder<>(Libro.class);
-        binder.bindInstanceFields(this); // Ahora sí encontrará los campos declarados arriba
-        binder.setBean(nuevoLibro);
+        Button save = new Button("Publicar", e -> {
+            Libro nuevo = new Libro();
+            nuevo.setTitulo(t.getValue());
+            nuevo.setAutor(a.getValue());
+            nuevo.setCategoria(c.getValue());
+            nuevo.setSinopsis(s.getValue());
+            nuevo.setLeido(l.getValue());
 
-        Button btnSave = new Button("Publicar", VaadinIcon.PAPERPLANE.create(), e -> {
-            if (binder.validate().isOk()) {
-                String currentUser = SecurityContextHolder.getContext().getAuthentication().getName();
-                usuarioService.buscarPorNombre(currentUser).ifPresent(nuevoLibro::setUsuario);
-                libroService.guardarLibro(nuevoLibro);
-                actualizarCatalogo();
-                dialog.close();
-                Notification.show("¡Libro publicado!");
-            }
+            String user = SecurityContextHolder.getContext().getAuthentication().getName();
+            usuarioService.buscarPorNombre(user).ifPresent(nuevo::setUsuario);
+
+            libroService.guardarLibro(nuevo);
+            actualizarCatalogo();
+            d.close();
+            Notification.show("Libro publicado en el muro global");
         });
-        btnSave.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        dialog.add(form);
-        dialog.getFooter().add(new Button("Cancelar", x -> dialog.close()), btnSave);
-        dialog.open();
+        d.add(new VerticalLayout(t, a, c, s, l));
+        d.getFooter().add(new Button("Cancelar", x -> d.close()), save);
+        d.open();
     }
 
     private void actualizarCatalogo() {
         catalogLayout.removeAll();
-        String currentUser = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<Libro> todos = libroService.listarTodos();
-
-        if (filters.getSelectedTab().equals(readTab)) {
-            todos = todos.stream().filter(l -> l.getUsuario() != null && l.getUsuario().getUsername().equals(currentUser) && l.isLeido()).collect(Collectors.toList());
-        } else if (filters.getSelectedTab().equals(pendingTab)) {
-            todos = todos.stream().filter(l -> l.getUsuario() != null && l.getUsuario().getUsername().equals(currentUser) && !l.isLeido()).collect(Collectors.toList());
-        }
-
-        todos.forEach(l -> catalogLayout.add(crearCard(l)));
+        String current = SecurityContextHolder.getContext().getAuthentication().getName();
+        libroService.listarTodos().stream()
+                .filter(l -> {
+                    // El Muro Global muestra todo. Las otras pestañas filtran por el usuario actual.
+                    if (filters.getSelectedTab().equals(readTab)) return l.isLeido() && l.getUsuario().getUsername().equals(current);
+                    if (filters.getSelectedTab().equals(pendingTab)) return !l.isLeido() && l.getUsuario().getUsername().equals(current);
+                    return true;
+                })
+                .forEach(l -> catalogLayout.add(crearCard(l)));
     }
 
     private Component crearCard(Libro libro) {
         VerticalLayout card = new VerticalLayout();
-        card.setWidth("230px");
-        card.getStyle().set("background", "white").set("border-radius", "15px")
-                .set("box-shadow", "0 8px 16px rgba(0,0,0,0.1)").set("padding", "15px");
+        card.setWidth("240px");
+        card.getStyle().set("background", "white").set("border-radius", "15px").set("box-shadow", "0 4px 6px rgba(0,0,0,0.1)");
+
+        String uploader = libro.getUsuario() != null ? libro.getUsuario().getUsername() : "Anónimo";
+        Span badgeUser = new Span("@" + uploader);
+        badgeUser.getStyle().set("font-size", "0.7rem").set("color", "#3b82f6").set("font-weight", "bold");
 
         Div cover = new Div(new Icon(VaadinIcon.BOOK));
-        cover.setWidthFull(); cover.setHeight("150px");
-        cover.getStyle().set("background", "#f1f5f9").set("display", "flex")
-                .set("align-items", "center").set("justify-content", "center")
-                .set("border-radius", "10px").set("cursor", "pointer").set("color", "#94a3b8");
+        cover.setWidthFull(); cover.setHeight("140px");
+        cover.getStyle().set("background", "#f1f5f9").set("display", "flex").set("align-items", "center").set("justify-content", "center").set("border-radius", "10px").set("cursor", "pointer");
         cover.addClickListener(e -> mostrarDetalles(libro));
 
-        H4 t = new H4(libro.getTitulo());
-        t.getStyle().set("margin", "10px 0 0 0").set("cursor", "pointer");
-        t.addClickListener(e -> mostrarDetalles(libro));
+        Button btnToggle = new Button(libro.isLeido() ? "Leído ✅" : "Pendiente ⏳");
+        btnToggle.addThemeVariants(libro.isLeido() ? ButtonVariant.LUMO_SUCCESS : ButtonVariant.LUMO_CONTRAST);
+        btnToggle.getStyle().set("font-size", "0.75rem");
+        btnToggle.addClickListener(e -> {
+            libro.setLeido(!libro.isLeido());
+            libroService.guardarLibro(libro);
+            actualizarCatalogo();
+        });
 
-        Span userLabel = new Span("@" + (libro.getUsuario() != null ? libro.getUsuario().getUsername() : "sistema"));
-        userLabel.getStyle().set("color", "#3b82f6").set("font-size", "0.75rem").set("font-weight", "bold");
-
-        HorizontalLayout stars = new HorizontalLayout();
-        for (int i = 1; i <= 5; i++) {
-            final int val = i;
-            Icon s = (i <= libro.getPuntuacion()) ? VaadinIcon.STAR.create() : VaadinIcon.STAR_O.create();
-            s.setSize("16px");
-            s.getStyle().set("color", i <= libro.getPuntuacion() ? "#eab308" : "#cbd5e1").set("cursor", "pointer");
-            s.addClickListener(e -> {
-                libro.setPuntuacion(val);
-                libroService.guardarLibro(libro);
-                actualizarCatalogo();
-                Notification.show("Valoración guardada");
-            });
-            stars.add(s);
-        }
-
-        card.add(cover, userLabel, t, new Span(libro.getAutor()), stars);
+        card.add(badgeUser, cover, new H4(libro.getTitulo()), btnToggle);
         card.setAlignItems(Alignment.CENTER);
         return card;
     }
 
     private void mostrarDetalles(Libro libro) {
-        Dialog details = new Dialog();
-        details.setWidth("600px");
-        details.setHeaderTitle(libro.getTitulo());
+        Dialog d = new Dialog();
+        d.setWidth("500px");
+        d.setHeaderTitle(libro.getTitulo() + " (Subido por @" + libro.getUsuario().getUsername() + ")");
 
         VerticalLayout layout = new VerticalLayout();
+        layout.add(new Html("<b>Sinopsis:</b>"), new Paragraph(libro.getSinopsis()));
+        layout.add(new Hr(), new Html("<b>Opiniones de la comunidad:</b>"));
 
-        Html sinopsisLabel = new Html("<div style='font-weight:bold; color:#64748b;'>Sinopsis:</div>");
-        Paragraph sinopsisText = new Paragraph(libro.getSinopsis() != null ? libro.getSinopsis() : "Este libro aún no tiene sinopsis.");
-
-        Html reviewLabel = new Html("<div style='font-weight:bold; color:#64748b;'>Opiniones de la comunidad:</div>");
-
-        TextArea commentField = new TextArea();
-        commentField.setWidthFull();
-        commentField.setPlaceholder("Escribe tu opinión sobre este libro...");
-        commentField.setValue(libro.getComentarios() != null ? libro.getComentarios() : "");
-
-        String autorPost = libro.getUsuario() != null ? libro.getUsuario().getUsername() : "Anónimo";
-        commentField.setLabel("Reseña escrita por: @" + autorPost);
-
-        Checkbox checkLeido = new Checkbox("¡Me lo he leído! ✅", libro.isLeido());
-
-        Button btnSaveDetails = new Button("Guardar cambios", e -> {
-            libro.setComentarios(commentField.getValue());
-            libro.setLeido(checkLeido.getValue());
-            libroService.guardarLibro(libro);
-            actualizarCatalogo();
-            details.close();
-            Notification.show("¡Diario actualizado!");
+        comentarioService.listarPorLibro(libro).forEach(c -> {
+            Div comm = new Div(new Span("<b>@" + c.getUsuario().getUsername() + "</b>: "), new Span(c.getTexto()));
+            comm.getStyle().set("background", "#f1f5f9").set("padding", "8px").set("border-radius", "8px").set("width", "100%");
+            layout.add(comm);
         });
-        btnSaveDetails.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        layout.add(sinopsisLabel, sinopsisText, new Hr(), reviewLabel, commentField, checkLeido, btnSaveDetails);
-        details.add(layout);
-        details.getFooter().add(new Button("Cerrar", e -> details.close()));
-        details.open();
+        TextArea input = new TextArea("Añade tu comentario");
+        input.setWidthFull();
+        Button btnComm = new Button("Comentar", e -> {
+            String u = SecurityContextHolder.getContext().getAuthentication().getName();
+            usuarioService.buscarPorNombre(u).ifPresent(user -> {
+                comentarioService.guardar(new Comentario(input.getValue(), user, libro));
+                d.close();
+                Notification.show("Comentario guardado");
+                actualizarCatalogo();
+            });
+        });
+
+        layout.add(input, btnComm);
+        d.add(layout);
+        d.open();
     }
 }

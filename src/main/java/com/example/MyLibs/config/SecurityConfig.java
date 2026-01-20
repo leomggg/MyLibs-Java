@@ -42,7 +42,7 @@ public class SecurityConfig extends VaadinWebSecurity {
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/data/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/register")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
         );
 
@@ -58,7 +58,6 @@ public class SecurityConfig extends VaadinWebSecurity {
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         super.configure(http);
-
-        setLoginView(http, LoginView.class); // Indica a Vaadin que use nuestra vista de login
+        setLoginView(http, LoginView.class);
     }
 }
