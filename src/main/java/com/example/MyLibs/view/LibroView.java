@@ -88,47 +88,69 @@ public class LibroView extends VerticalLayout {
     }
 
     private Component crearCard(Libro libroBase, Usuario currentUser) {
-        VerticalLayout card = new VerticalLayout();
-        card.setWidth("240px");
-        card.getStyle().set("background", "white").set("border-radius", "15px").set("box-shadow", "0 4px 6px rgba(0,0,0,0.1)");
-
         Optional<Libro> miCopia = libroService.buscarMiCopia(libroBase.getTitulo(), libroBase.getAutor(), currentUser);
         boolean yaLoTengo = miCopia.isPresent();
+        Libro libroAMostrar = yaLoTengo ? miCopia.get() : libroBase;
+
+        Component cover;
+        if (libroBase.getUrlPortada() != null && !libroBase.getUrlPortada().isEmpty()) {
+            Image img = new Image(libroBase.getUrlPortada(), "Portada de " + libroBase.getTitulo());
+            img.setWidthFull();
+            img.setHeight("180px");
+            img.getStyle().set("object-fit", "cover").set("border-radius", "10px");
+            cover = img;
+        } else {
+            Div placeholder = new Div(new Icon(VaadinIcon.BOOK));
+            placeholder.setWidthFull();
+            placeholder.setHeight("180px");
+            placeholder.getStyle().set("background", "#e2e8f0").set("display", "flex")
+                    .set("align-items", "center").set("justify-content", "center").set("border-radius", "10px");
+            cover = placeholder;
+        }
+        cover.getStyle().set("cursor", "pointer");
+        cover.getElement().addEventListener("click", e -> mostrarDetalles(libroAMostrar, currentUser));
+
+        VerticalLayout card = new VerticalLayout();
+        card.setWidth("240px");
+        card.getStyle().set("background", "white").set("border-radius", "15px").set("box-shadow", "0 4px 10px rgba(0,0,0,0.1)");
 
         int estrellasVisuales = yaLoTengo ? miCopia.get().getPuntuacion() : libroService.obtenerMediaComunidad(libroBase.getTitulo(), libroBase.getAutor());
-
-        Div cover = new Div(new Icon(VaadinIcon.BOOK));
-        cover.setWidthFull(); cover.setHeight("140px");
-        cover.getStyle().set("background", "#f1f5f9").set("display", "flex").set("align-items", "center")
-                .set("justify-content", "center").set("border-radius", "10px").set("cursor", "pointer");
-        cover.addClickListener(e -> mostrarDetalles(yaLoTengo ? miCopia.get() : libroBase, currentUser));
-
         HorizontalLayout stars = new HorizontalLayout();
         for (int i = 1; i <= 5; i++) {
             final int n = i;
             Icon s = (i <= estrellasVisuales) ? VaadinIcon.STAR.create() : VaadinIcon.STAR_O.create();
             s.setSize("16px");
-
             String color = i <= estrellasVisuales ? (yaLoTengo ? "#eab308" : "#3b82f6") : "#e2e8f0";
             s.getStyle().set("color", color);
 
             if (yaLoTengo) {
                 s.getStyle().set("cursor", "pointer");
-                s.addClickListener(e -> { miCopia.get().setPuntuacion(n); libroService.guardarLibro(miCopia.get()); actualizarCatalogo(); });
+                s.addClickListener(e -> {
+                    miCopia.get().setPuntuacion(n);
+                    libroService.guardarLibro(miCopia.get());
+                    actualizarCatalogo();
+                });
             }
             stars.add(s);
         }
 
-        card.add(cover, new H4(libroBase.getTitulo()), new Span(libroBase.getAutor()));
+        H4 t = new H4(libroBase.getTitulo());
+        t.getStyle().set("cursor", "pointer").set("margin", "10px 0 0 0");
+        t.addClickListener(e -> mostrarDetalles(libroAMostrar, currentUser));
+
+        card.add(cover, t, new Span(libroBase.getAutor()));
 
         if (!yaLoTengo) {
             Button btnAdd = new Button("Añadir a mi lista", VaadinIcon.COPY.create(), e -> {
                 Libro copia = new Libro();
-                copia.setTitulo(libroBase.getTitulo()); copia.setAutor(libroBase.getAutor());
-                copia.setCategoria(libroBase.getCategoria()); copia.setSinopsis(libroBase.getSinopsis());
+                copia.setTitulo(libroBase.getTitulo());
+                copia.setAutor(libroBase.getAutor());
+                copia.setCategoria(libroBase.getCategoria());
+                copia.setSinopsis(libroBase.getSinopsis());
+                copia.setUrlPortada(libroBase.getUrlPortada());
                 copia.setUsuario(currentUser);
                 libroService.guardarLibro(copia);
-                Notification.show("¡Añadido!");
+                Notification.show("¡Añadido a tu colección!");
                 actualizarCatalogo();
             });
             btnAdd.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
@@ -136,6 +158,7 @@ public class LibroView extends VerticalLayout {
         } else {
             Button btnStatus = new Button(miCopia.get().isLeido() ? "Leído ✅" : "Pendiente ⏳");
             btnStatus.addThemeVariants(miCopia.get().isLeido() ? ButtonVariant.LUMO_SUCCESS : ButtonVariant.LUMO_CONTRAST);
+            btnStatus.getStyle().set("font-size", "0.75rem");
             btnStatus.addClickListener(e -> {
                 miCopia.get().setLeido(!miCopia.get().isLeido());
                 libroService.guardarLibro(miCopia.get());

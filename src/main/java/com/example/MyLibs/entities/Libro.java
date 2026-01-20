@@ -23,6 +23,8 @@ public class Libro {
 
     private String isbn;
 
+    private String urlPortada;
+
     @NotNull
     @PositiveOrZero
     private BigDecimal precio = BigDecimal.ZERO;
