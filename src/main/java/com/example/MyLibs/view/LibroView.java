@@ -5,6 +5,7 @@ import com.example.MyLibs.services.*;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.button.*;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -25,7 +26,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Route("")
-@PageTitle("Comunidad | MyLibs")
+@PageTitle("MyLibs | Comunidad Literaria")
 @RolesAllowed({"ROLE_USER", "ROLE_ADMIN"})
 public class LibroView extends VerticalLayout {
 
@@ -37,9 +38,9 @@ public class LibroView extends VerticalLayout {
 
     private FlexLayout catalogLayout = new FlexLayout();
     private TextField searchField = new TextField();
-    private Tab allTab = new Tab("Home 🏠");
-    private Tab readTab = new Tab("Leídos ✅");
-    private Tab pendingTab = new Tab("Pendientes ⏳");
+    private Tab allTab = new Tab(VaadinIcon.GLOBE.create(), new Span(" Muro Global"));
+    private Tab readTab = new Tab(VaadinIcon.CHECK_CIRCLE.create(), new Span(" Mis Leídos"));
+    private Tab pendingTab = new Tab(VaadinIcon.CLOCK.create(), new Span(" Pendientes"));
     private Tabs filters = new Tabs(allTab, readTab, pendingTab);
 
     public LibroView(LibroService ls, CategoriaService cs, UsuarioService us, ComentarioService cms, AuthenticationContext authContext) {
@@ -48,36 +49,39 @@ public class LibroView extends VerticalLayout {
         this.authContext = authContext;
 
         setSizeFull();
-        getStyle().set("background-color", "#f1f5f9");
+        setPadding(false);
+        getStyle().set("background-color", "#FDFBF7");
 
-        searchField.setPlaceholder("Buscar por título, autor o género...");
+        // --- BARRA SUPERIOR ---
+        H1 logo = new H1("MyLibs");
+        logo.getStyle().set("font-family", "serif").set("color", "#2D5A27").set("margin", "0").set("font-size", "1.8rem");
+
+        searchField.setPlaceholder("Título, autor o género...");
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
-        searchField.setWidth("350px");
-        searchField.setClearButtonVisible(true);
+        searchField.setWidth("300px");
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
         searchField.addValueChangeListener(e -> actualizarCatalogo());
 
-        String currentName = SecurityContextHolder.getContext().getAuthentication().getName();
-        Button btnLogout = new Button("Cerrar Sesión", VaadinIcon.EXIT.create(), e -> authContext.logout());
-        btnLogout.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+        Button btnLogout = new Button("Salir", VaadinIcon.EXIT.create(), e -> authContext.logout());
+        btnLogout.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
 
-        HorizontalLayout topBar = new HorizontalLayout(new H2("MyLibs"), filters, searchField, new HorizontalLayout(new Span("Usuario: " + currentName), btnLogout));
-        topBar.setWidthFull();
-        topBar.setAlignItems(Alignment.CENTER);
-        topBar.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        topBar.getStyle().set("background", "white").set("padding", "10px 20px").set("box-shadow", "0 2px 4px rgba(0,0,0,0.1)");
+        HorizontalLayout header = new HorizontalLayout(logo, filters, searchField, btnLogout);
+        header.setWidthFull(); header.setAlignItems(Alignment.CENTER); header.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        header.getStyle().set("background", "white").set("padding", "10px 30px").set("box-shadow", "0 2px 8px rgba(0,0,0,0.05)");
 
+        // --- BOTÓN FLOTANTE (+) ---
         Button btnAdd = new Button(VaadinIcon.PLUS.create(), e -> abrirDialogoNuevoLibro());
-        btnAdd.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
-        btnAdd.getStyle().set("position", "fixed").set("bottom", "30px").set("right", "30px")
+        btnAdd.getStyle()
+                .set("position", "fixed").set("bottom", "30px").set("right", "30px")
+                .set("background-color", "#2D5A27").set("color", "white")
                 .set("border-radius", "50%").set("width", "70px").set("height", "70px")
-                .set("z-index", "100").set("box-shadow", "0 10px 20px rgba(0,0,0,0.3)");
+                .set("box-shadow", "0 10px 30px rgba(45, 90, 39, 0.4)");
 
         filters.addSelectedChangeListener(e -> actualizarCatalogo());
         catalogLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        catalogLayout.getStyle().set("gap", "20px").set("padding", "20px");
+        catalogLayout.getStyle().set("gap", "25px").set("padding", "40px");
 
-        add(topBar, new Hr(), catalogLayout, btnAdd);
+        add(header, catalogLayout, btnAdd);
         actualizarCatalogo();
     }
 
@@ -85,24 +89,18 @@ public class LibroView extends VerticalLayout {
         catalogLayout.removeAll();
         String currentName = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario currentUser = usuarioService.buscarPorNombre(currentName).orElse(null);
-        String searchTerm = searchField.getValue().toLowerCase().trim(); // Texto a buscar
+        String term = searchField.getValue().toLowerCase().trim();
 
-        List<Libro> todos = libroService.listarTodos();
-
-        List<Libro> filtrados = todos.stream()
-                .filter(l -> {
-                    if (searchTerm.isEmpty()) return true;
-                    boolean coincideTitulo = l.getTitulo().toLowerCase().contains(searchTerm);
-                    boolean coincideAutor = l.getAutor().toLowerCase().contains(searchTerm);
-                    boolean coincideGenero = l.getCategoria() != null && l.getCategoria().getNombre().toLowerCase().contains(searchTerm);
-                    return coincideTitulo || coincideAutor || coincideGenero;
-                })
+        List<Libro> filtrados = libroService.listarTodos().stream()
+                .filter(l -> term.isEmpty() || l.getTitulo().toLowerCase().contains(term) ||
+                        l.getAutor().toLowerCase().contains(term) ||
+                        (l.getCategoria() != null && l.getCategoria().getNombre().toLowerCase().contains(term)))
                 .collect(Collectors.toList());
 
         if (filters.getSelectedTab().equals(allTab)) {
+            // Unicidad en el muro
             Collection<Libro> unicos = filtrados.stream().collect(Collectors.toMap(
                     l -> (l.getTitulo() + l.getAutor()).toLowerCase(), l -> l, (a, b) -> a)).values();
-
             unicos.forEach(l -> catalogLayout.add(crearCard(l, currentUser)));
         } else {
             filtrados.stream()
@@ -113,86 +111,78 @@ public class LibroView extends VerticalLayout {
     }
 
     private Component crearCard(Libro libroBase, Usuario currentUser) {
+        VerticalLayout card = new VerticalLayout();
+        card.setWidth("250px");
+        card.getStyle().set("background", "white").set("border-radius", "20px")
+                .set("box-shadow", "0 8px 20px rgba(0,0,0,0.06)").set("padding", "20px")
+                .set("transition", "transform 0.2s");
+
+        card.getElement().addEventListener("mouseover", e -> card.getStyle().set("transform", "translateY(-10px)"));
+        card.getElement().addEventListener("mouseout", e -> card.getStyle().set("transform", "translateY(0)"));
+
         Optional<Libro> miCopia = libroService.buscarMiCopia(libroBase.getTitulo(), libroBase.getAutor(), currentUser);
         boolean yaLoTengo = miCopia.isPresent();
         Libro libroAMostrar = yaLoTengo ? miCopia.get() : libroBase;
 
+        // Foto de portada
         Component cover;
         if (libroBase.getUrlPortada() != null && !libroBase.getUrlPortada().isEmpty()) {
-            Image img = new Image(libroBase.getUrlPortada(), "Portada de " + libroBase.getTitulo());
-            img.setWidthFull();
-            img.setHeight("180px");
-            img.getStyle().set("object-fit", "cover").set("border-radius", "10px");
+            Image img = new Image(libroBase.getUrlPortada(), "Portada");
+            img.setWidthFull(); img.setHeight("200px");
+            img.getStyle().set("object-fit", "cover").set("border-radius", "12px");
             cover = img;
         } else {
             Div placeholder = new Div(new Icon(VaadinIcon.BOOK));
-            placeholder.setWidthFull();
-            placeholder.setHeight("180px");
-            placeholder.getStyle().set("background", "#e2e8f0").set("display", "flex")
-                    .set("align-items", "center").set("justify-content", "center").set("border-radius", "10px");
+            placeholder.setWidthFull(); placeholder.setHeight("200px");
+            placeholder.getStyle().set("background", "#f1f5f9").set("display", "flex")
+                    .set("align-items", "center").set("justify-content", "center").set("border-radius", "12px");
             cover = placeholder;
         }
         cover.getStyle().set("cursor", "pointer");
         cover.getElement().addEventListener("click", e -> mostrarDetalles(libroAMostrar, currentUser));
 
-        VerticalLayout card = new VerticalLayout();
-        card.setWidth("240px");
-        card.getStyle().set("background", "white").set("border-radius", "15px").set("box-shadow", "0 4px 10px rgba(0,0,0,0.1)");
-
-        int estrellasVisuales = yaLoTengo ? miCopia.get().getPuntuacion() : libroService.obtenerMediaComunidad(libroBase.getTitulo(), libroBase.getAutor());
+        // Estrellas por colores
+        int starsVal = yaLoTengo ? miCopia.get().getPuntuacion() : libroService.obtenerMediaComunidad(libroBase.getTitulo(), libroBase.getAutor());
         HorizontalLayout stars = new HorizontalLayout();
         for (int i = 1; i <= 5; i++) {
             final int n = i;
-            Icon s = (i <= estrellasVisuales) ? VaadinIcon.STAR.create() : VaadinIcon.STAR_O.create();
+            Icon s = (i <= starsVal) ? VaadinIcon.STAR.create() : VaadinIcon.STAR_O.create();
             s.setSize("16px");
-            String color = i <= estrellasVisuales ? (yaLoTengo ? "#eab308" : "#3b82f6") : "#e2e8f0";
-            s.getStyle().set("color", color);
-
+            s.getStyle().set("color", i <= starsVal ? (yaLoTengo ? "#eab308" : "#3b82f6") : "#e2e8f0");
             if (yaLoTengo) {
                 s.getStyle().set("cursor", "pointer");
-                s.addClickListener(e -> {
-                    miCopia.get().setPuntuacion(n);
-                    libroService.guardarLibro(miCopia.get());
-                    actualizarCatalogo();
-                });
+                s.addClickListener(e -> { miCopia.get().setPuntuacion(n); libroService.guardarLibro(miCopia.get()); actualizarCatalogo(); });
             }
             stars.add(s);
         }
 
-        H4 t = new H4(libroBase.getTitulo());
-        t.getStyle().set("cursor", "pointer").set("margin", "10px 0 0 0");
+        H3 t = new H3(libroBase.getTitulo());
+        t.getStyle().set("font-family", "serif").set("margin", "15px 0 2px 0").set("cursor", "pointer");
         t.addClickListener(e -> mostrarDetalles(libroAMostrar, currentUser));
 
-        card.add(cover, t, new Span(libroBase.getAutor()));
+        card.add(cover, t, new Span(libroBase.getAutor()), stars);
 
         if (!yaLoTengo) {
-            Button btnAdd = new Button("Añadir a mi lista", VaadinIcon.COPY.create(), e -> {
+            Button btnAdd = new Button("Añadir a mi lista", e -> {
                 Libro copia = new Libro();
-                copia.setTitulo(libroBase.getTitulo());
-                copia.setAutor(libroBase.getAutor());
-                copia.setCategoria(libroBase.getCategoria());
-                copia.setSinopsis(libroBase.getSinopsis());
-                copia.setUrlPortada(libroBase.getUrlPortada());
-                copia.setUsuario(currentUser);
-                libroService.guardarLibro(copia);
-                Notification.show("¡Añadido a tu colección!");
-                actualizarCatalogo();
+                copia.setTitulo(libroBase.getTitulo()); copia.setAutor(libroBase.getAutor());
+                copia.setCategoria(libroBase.getCategoria()); copia.setSinopsis(libroBase.getSinopsis());
+                copia.setUrlPortada(libroBase.getUrlPortada()); copia.setUsuario(currentUser);
+                libroService.guardarLibro(copia); actualizarCatalogo();
+                Notification.show("¡Libro guardado!");
             });
-            btnAdd.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+            btnAdd.getStyle().set("background-color", "#2D5A27").set("color", "white").set("border-radius", "10px");
             card.add(btnAdd);
         } else {
             Button btnStatus = new Button(miCopia.get().isLeido() ? "Leído ✅" : "Pendiente ⏳");
             btnStatus.addThemeVariants(miCopia.get().isLeido() ? ButtonVariant.LUMO_SUCCESS : ButtonVariant.LUMO_CONTRAST);
-            btnStatus.getStyle().set("font-size", "0.75rem");
             btnStatus.addClickListener(e -> {
                 miCopia.get().setLeido(!miCopia.get().isLeido());
-                libroService.guardarLibro(miCopia.get());
-                actualizarCatalogo();
+                libroService.guardarLibro(miCopia.get()); actualizarCatalogo();
             });
             card.add(btnStatus);
         }
 
-        card.add(stars);
         card.setAlignItems(Alignment.CENTER);
         return card;
     }
@@ -204,48 +194,35 @@ public class LibroView extends VerticalLayout {
 
         VerticalLayout layout = new VerticalLayout();
 
-        String genero = libro.getCategoria() != null ? libro.getCategoria().getNombre() : "General";
-        int mediaGlobal = libroService.obtenerMediaComunidad(libro.getTitulo(), libro.getAutor());
-
-        HorizontalLayout infoPanel = new HorizontalLayout(
-                new Span("📖 Género: " + genero),
-                new Span("⭐ Media Global: " + mediaGlobal + "/5")
+        HorizontalLayout info = new HorizontalLayout(
+                new Span("📂 " + (libro.getCategoria() != null ? libro.getCategoria().getNombre() : "General")),
+                new Span("⭐ Comunidad: " + libroService.obtenerMediaComunidad(libro.getTitulo(), libro.getAutor()) + "/5")
         );
-        infoPanel.getStyle().set("color", "#64748b").set("font-size", "0.85rem").set("font-weight", "bold");
+        info.getStyle().set("color", "#64748b").set("font-size", "0.9rem").set("font-weight", "bold");
 
-        layout.add(infoPanel, new Html("<span><b>Sinopsis:</b></span>"), new Paragraph(libro.getSinopsis()));
-        layout.add(new Hr(), new Html("<span><b>Comentarios de la comunidad:</b></span>"));
-
-        VerticalLayout listaComentarios = new VerticalLayout();
-        listaComentarios.setPadding(false);
-
-        Runnable recargar = () -> {
-            listaComentarios.removeAll();
+        VerticalLayout commentsList = new VerticalLayout();
+        commentsList.setPadding(false);
+        Runnable reload = () -> {
+            commentsList.removeAll();
             comentarioService.listarComunidad(libro.getTitulo(), libro.getAutor()).forEach(c -> {
                 Div row = new Div(new Span("@" + c.getUsuario().getUsername() + ": "), new Span(c.getTexto()));
-                row.getStyle().set("background", "#f1f5f9").set("padding", "8px").set("border-radius", "8px").set("margin-bottom", "5px").set("width", "100%");
-                listaComentarios.add(row);
+                row.getStyle().set("background", "#f1f5f9").set("padding", "10px").set("border-radius", "10px").set("width", "100%");
+                commentsList.add(row);
             });
         };
-        recargar.run();
+        reload.run();
 
         TextArea input = new TextArea();
-        input.setPlaceholder("Escribe tu opinión...");
-        input.setWidthFull();
+        input.setPlaceholder("Escribe tu opinión..."); input.setWidthFull();
 
-        Button btnComm = new Button("Comentar", e -> {
-            String txt = input.getValue();
-            if (txt == null || txt.trim().isEmpty()) {
-                Notification.show("⚠️ El comentario no puede estar vacío");
-                return;
-            }
-            comentarioService.guardar(new Comentario(txt, currentUser, libro));
-            input.clear();
-            recargar.run();
+        Button btnComm = new Button("Publicar Opinión", e -> {
+            if (input.getValue().trim().isEmpty()) return;
+            comentarioService.guardar(new Comentario(input.getValue(), currentUser, libro));
+            input.clear(); reload.run();
         });
-        btnComm.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        btnComm.getStyle().set("background-color", "#2D5A27").set("color", "white");
 
-        layout.add(listaComentarios, input, btnComm);
+        layout.add(info, new Html("<span><b>Sinopsis:</b></span>"), new Paragraph(libro.getSinopsis()), new Hr(), new Html("<span><b>Opiniones:</b></span>"), commentsList, input, btnComm);
         d.add(layout);
         d.getFooter().add(new Button("Cerrar", e -> d.close()));
         d.open();
@@ -253,7 +230,7 @@ public class LibroView extends VerticalLayout {
 
     private void abrirDialogoNuevoLibro() {
         Dialog d = new Dialog();
-        d.setHeaderTitle("Nuevo Libro");
+        d.setHeaderTitle("Nuevo Libro en la Comunidad");
         TextField t = new TextField("Título");
         TextField a = new TextField("Autor");
         ComboBox<Categoria> c = new ComboBox<>("Género");
@@ -261,16 +238,16 @@ public class LibroView extends VerticalLayout {
         c.setItemLabelGenerator(Categoria::getNombre);
         TextArea s = new TextArea("Sinopsis");
 
-        d.add(new VerticalLayout(t, a, c, s));
-        d.getFooter().add(new Button("Cancelar", x -> d.close()), new Button("Añadir", e -> {
-            Libro n = new Libro();
-            n.setTitulo(t.getValue()); n.setAutor(a.getValue());
+        Button save = new Button("Publicar", e -> {
+            Libro n = new Libro(); n.setTitulo(t.getValue()); n.setAutor(a.getValue());
             n.setCategoria(c.getValue()); n.setSinopsis(s.getValue());
             usuarioService.buscarPorNombre(SecurityContextHolder.getContext().getAuthentication().getName()).ifPresent(n::setUsuario);
-            libroService.guardarLibro(n);
-            actualizarCatalogo();
-            d.close();
-        }));
+            libroService.guardarLibro(n); actualizarCatalogo(); d.close();
+        });
+        save.getStyle().set("background-color", "#2D5A27").set("color", "white");
+
+        d.add(new VerticalLayout(t, a, c, s));
+        d.getFooter().add(new Button("Cancelar", x -> d.close()), save);
         d.open();
     }
 }
