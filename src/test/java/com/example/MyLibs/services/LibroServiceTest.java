@@ -7,10 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import java.util.Arrays;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class LibroServiceTest {
@@ -22,16 +21,14 @@ public class LibroServiceTest {
     private LibroService libroService;
 
     @Test
-    void testBuscarPorIdExitoso() {
-        Libro libro = new Libro();
-        libro.setId(1L);
-        libro.setTitulo("Java para Expertos");
+    public void testCalculoMediaComunitaria() {
+        Libro l1 = new Libro(); l1.setTitulo("Java"); l1.setAutor("Oracle"); l1.setPuntuacion(2);
+        Libro l2 = new Libro(); l2.setTitulo("Java"); l2.setAutor("Oracle"); l2.setPuntuacion(4);
 
-        when(libroRepository.findById(1L)).thenReturn(Optional.of(libro));
+        when(libroRepository.findAll()).thenReturn(Arrays.asList(l1, l2));
 
-        Libro resultado = libroService.buscarPorId(1L);
+        int media = libroService.obtenerMediaComunidad("Java", "Oracle");
 
-        assertNotNull(resultado);
-        assertEquals("Java para Expertos", resultado.getTitulo());
+        assertEquals(3, media, "La media de estrellas no es correcta");
     }
 }

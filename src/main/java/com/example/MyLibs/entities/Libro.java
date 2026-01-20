@@ -16,14 +16,13 @@ public class Libro {
     private Long id;
 
     @NotBlank(message = "El título es obligatorio")
+    @Size(min = 2, max = 150, message = "El título debe tener entre 2 y 150 caracteres")
     private String titulo;
 
     @NotBlank(message = "El autor es obligatorio")
     private String autor;
 
     private String isbn;
-
-    private String urlPortada;
 
     @NotNull
     @PositiveOrZero
@@ -37,6 +36,8 @@ public class Libro {
 
     @Column(length = 3000)
     private String comentarios;
+
+    private String urlPortada;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "categoria_id")
