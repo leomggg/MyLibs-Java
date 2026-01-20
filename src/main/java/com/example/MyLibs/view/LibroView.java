@@ -14,11 +14,13 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.*;
 import com.vaadin.flow.component.tabs.*;
 import com.vaadin.flow.component.textfield.*;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,9 +36,10 @@ public class LibroView extends VerticalLayout {
     private final transient AuthenticationContext authContext;
 
     private FlexLayout catalogLayout = new FlexLayout();
-    private Tab allTab = new Tab("Muro Global 🌏");
-    private Tab readTab = new Tab("Mis Leídos ✅");
-    private Tab pendingTab = new Tab("Mis Pendientes ⏳");
+    private TextField searchField = new TextField();
+    private Tab allTab = new Tab("Home 🏠");
+    private Tab readTab = new Tab("Leídos ✅");
+    private Tab pendingTab = new Tab("Pendientes ⏳");
     private Tabs filters = new Tabs(allTab, readTab, pendingTab);
 
     public LibroView(LibroService ls, CategoriaService cs, UsuarioService us, ComentarioService cms, AuthenticationContext authContext) {
@@ -47,13 +50,22 @@ public class LibroView extends VerticalLayout {
         setSizeFull();
         getStyle().set("background-color", "#f1f5f9");
 
+        searchField.setPlaceholder("Buscar por título, autor o género...");
+        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+        searchField.setWidth("350px");
+        searchField.setClearButtonVisible(true);
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> actualizarCatalogo());
+
         String currentName = SecurityContextHolder.getContext().getAuthentication().getName();
         Button btnLogout = new Button("Cerrar Sesión", VaadinIcon.EXIT.create(), e -> authContext.logout());
         btnLogout.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
-        HorizontalLayout topBar = new HorizontalLayout(new H2("MyLibs Social"), filters, new HorizontalLayout(new Span("Usuario: " + currentName), btnLogout));
-        topBar.setWidthFull(); topBar.setAlignItems(Alignment.CENTER); topBar.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        topBar.getStyle().set("background", "white").set("padding", "10px 20px");
+        HorizontalLayout topBar = new HorizontalLayout(new H2("MyLibs"), filters, searchField, new HorizontalLayout(new Span("Usuario: " + currentName), btnLogout));
+        topBar.setWidthFull();
+        topBar.setAlignItems(Alignment.CENTER);
+        topBar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        topBar.getStyle().set("background", "white").set("padding", "10px 20px").set("box-shadow", "0 2px 4px rgba(0,0,0,0.1)");
 
         Button btnAdd = new Button(VaadinIcon.PLUS.create(), e -> abrirDialogoNuevoLibro());
         btnAdd.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
@@ -73,14 +85,27 @@ public class LibroView extends VerticalLayout {
         catalogLayout.removeAll();
         String currentName = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario currentUser = usuarioService.buscarPorNombre(currentName).orElse(null);
+        String searchTerm = searchField.getValue().toLowerCase().trim(); // Texto a buscar
+
         List<Libro> todos = libroService.listarTodos();
 
+        List<Libro> filtrados = todos.stream()
+                .filter(l -> {
+                    if (searchTerm.isEmpty()) return true;
+                    boolean coincideTitulo = l.getTitulo().toLowerCase().contains(searchTerm);
+                    boolean coincideAutor = l.getAutor().toLowerCase().contains(searchTerm);
+                    boolean coincideGenero = l.getCategoria() != null && l.getCategoria().getNombre().toLowerCase().contains(searchTerm);
+                    return coincideTitulo || coincideAutor || coincideGenero;
+                })
+                .collect(Collectors.toList());
+
         if (filters.getSelectedTab().equals(allTab)) {
-            Collection<Libro> unicos = todos.stream().collect(Collectors.toMap(
+            Collection<Libro> unicos = filtrados.stream().collect(Collectors.toMap(
                     l -> (l.getTitulo() + l.getAutor()).toLowerCase(), l -> l, (a, b) -> a)).values();
+
             unicos.forEach(l -> catalogLayout.add(crearCard(l, currentUser)));
         } else {
-            todos.stream()
+            filtrados.stream()
                     .filter(l -> l.getUsuario().getUsername().equals(currentName))
                     .filter(l -> filters.getSelectedTab().equals(readTab) ? l.isLeido() : !l.isLeido())
                     .forEach(l -> catalogLayout.add(crearCard(l, currentUser)));
@@ -183,13 +208,13 @@ public class LibroView extends VerticalLayout {
         int mediaGlobal = libroService.obtenerMediaComunidad(libro.getTitulo(), libro.getAutor());
 
         HorizontalLayout infoPanel = new HorizontalLayout(
-                new Span("📂 Categoría: " + genero),
+                new Span("📖 Género: " + genero),
                 new Span("⭐ Media Global: " + mediaGlobal + "/5")
         );
         infoPanel.getStyle().set("color", "#64748b").set("font-size", "0.85rem").set("font-weight", "bold");
 
         layout.add(infoPanel, new Html("<span><b>Sinopsis:</b></span>"), new Paragraph(libro.getSinopsis()));
-        layout.add(new Hr(), new Html("<span><b>Opiniones de la comunidad:</b></span>"));
+        layout.add(new Hr(), new Html("<span><b>Comentarios de la comunidad:</b></span>"));
 
         VerticalLayout listaComentarios = new VerticalLayout();
         listaComentarios.setPadding(false);
@@ -210,7 +235,7 @@ public class LibroView extends VerticalLayout {
 
         Button btnComm = new Button("Comentar", e -> {
             String txt = input.getValue();
-            if (txt == null || txt.trim().isEmpty()) { // VALIDACIÓN VACÍO
+            if (txt == null || txt.trim().isEmpty()) {
                 Notification.show("⚠️ El comentario no puede estar vacío");
                 return;
             }
