@@ -1,7 +1,6 @@
 package com.example.MyLibs.services;
 
 import com.example.MyLibs.entities.Comentario;
-import com.example.MyLibs.entities.Libro;
 import com.example.MyLibs.repository.ComentarioRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -15,5 +14,8 @@ public class ComentarioService {
     }
 
     public void guardar(Comentario c) { repository.save(c); }
-    public List<Comentario> listarPorLibro(Libro l) { return repository.findByLibroOrderByFechaDesc(l); }
+
+    public List<Comentario> listarComunidad(String titulo, String autor) {
+        return repository.findByLibroTituloYAutor(titulo, autor);
+    }
 }

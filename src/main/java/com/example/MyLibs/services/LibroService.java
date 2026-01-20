@@ -1,35 +1,40 @@
 package com.example.MyLibs.services;
 
 import com.example.MyLibs.entities.Libro;
-import com.example.MyLibs.exceptions.ResourceNotFoundException;
+import com.example.MyLibs.entities.Usuario;
 import com.example.MyLibs.repository.LibroRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class LibroService {
+    private final LibroRepository repository;
 
-    @Autowired
-    private LibroRepository libroRepo;
-
-    public List<Libro> listarTodos() {
-        return libroRepo.findAll();
+    public LibroService(LibroRepository repository) {
+        this.repository = repository;
     }
 
-    public Libro guardarLibro(Libro libro) {
-        return libroRepo.save(libro);
+    public List<Libro> listarTodos() { return repository.findAll(); }
+    public void guardarLibro(Libro l) { repository.save(l); }
+
+    public Optional<Libro> buscarMiCopia(String titulo, String autor, Usuario usuario) {
+        return repository.findByTituloIgnoreCaseAndAutorIgnoreCaseAndUsuario(titulo, autor, usuario);
     }
 
-    public Libro buscarPorId(Long id) {
-        return libroRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Libro con ID " + id + " no encontrado"));
-    }
+    public int obtenerMediaComunidad(String titulo, String autor) {
+        List<Libro> copias = repository.findAll().stream()
+                .filter(l -> l.getTitulo().equalsIgnoreCase(titulo) && l.getAutor().equalsIgnoreCase(autor))
+                .filter(l -> l.getPuntuacion() > 0)
+                .toList();
 
-    public void eliminarLibro(Long id) {
-        if (!libroRepo.existsById(id)) {
-            throw new ResourceNotFoundException("No se puede eliminar: ID no existe");
-        }
-        libroRepo.deleteById(id);
+        if (copias.isEmpty()) return 0;
+
+        double media = copias.stream()
+                .mapToInt(Libro::getPuntuacion)
+                .average()
+                .orElse(0.0);
+
+        return (int) Math.round(media);
     }
 }
